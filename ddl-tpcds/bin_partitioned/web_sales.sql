@@ -1,9 +1,25 @@
+set hive.exec.dynamic.partition.mode=nonstrict;
+set hive.exec.max.dynamic.partitions.pernode=100000;
+set hive.exec.max.dynamic.partitions=100000;
+set hive.exec.max.created.files=1000000;
+set hive.exec.parallel=true;
+set hive.exec.reducers.max=${REDUCERS};
+set hive.stats.autogather=true;
+set hive.optimize.sort.dynamic.partition=true;
+set hive.optimize.sort.dynamic.partition=true;
+set tez.runtime.empty.partitions.info-via-events.enabled=true;
+set tez.runtime.report.partition.stats=true;
+set hive.tez.auto.reducer.parallelism=true;
+set hive.tez.min.partition.factor=0.01; 
+set hive.optimize.sort.dynamic.partition.threshold=0;
+set iceberg.mr.schema.auto.conversion=true;
+
 create database if not exists ${DB};
 use ${DB};
 
 drop table if exists web_sales;
 
-create table web_sales
+create external table web_sales
 (
     ws_sold_time_sk           bigint,
     ws_ship_date_sk           bigint,
@@ -40,10 +56,13 @@ create table web_sales
     ws_net_profit             decimal(7,2)
 )
 partitioned by (ws_sold_date_sk           bigint)
-stored as ${FILE};
+${STORED_BY}
+stored as ${FILE}
+${TABLE_PROPS};
 
 from ${SOURCE}.web_sales ws
-insert overwrite table web_sales partition (ws_sold_date_sk) 
+insert overwrite table web_sales 
+--partition (ws_sold_date_sk) 
 select
         ws.ws_sold_time_sk,
         ws.ws_ship_date_sk,
@@ -79,8 +98,11 @@ select
         ws.ws_net_paid_inc_ship_tax,
         ws.ws_net_profit,
         ws.ws_sold_date_sk
-        where ws.ws_sold_date_sk is not null
-insert overwrite table web_sales partition (ws_sold_date_sk) 
+        where ws.ws_sold_date_sk is not null;
+
+from ${SOURCE}.web_sales ws
+insert overwrite table web_sales 
+--partition (ws_sold_date_sk) 
 select
         ws.ws_sold_time_sk,
         ws.ws_ship_date_sk,

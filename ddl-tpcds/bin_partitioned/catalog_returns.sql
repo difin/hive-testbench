@@ -1,9 +1,25 @@
+set hive.exec.dynamic.partition.mode=nonstrict;
+set hive.exec.max.dynamic.partitions.pernode=100000;
+set hive.exec.max.dynamic.partitions=100000;
+set hive.exec.max.created.files=1000000;
+set hive.exec.parallel=true;
+set hive.exec.reducers.max=${REDUCERS};
+set hive.stats.autogather=true;
+set hive.optimize.sort.dynamic.partition=true;
+set hive.optimize.sort.dynamic.partition=true;
+set tez.runtime.empty.partitions.info-via-events.enabled=true;
+set tez.runtime.report.partition.stats=true;
+set hive.tez.auto.reducer.parallelism=true;
+set hive.tez.min.partition.factor=0.01; 
+set hive.optimize.sort.dynamic.partition.threshold=0;
+set iceberg.mr.schema.auto.conversion=true;
+
 create database if not exists ${DB};
 use ${DB};
 
 drop table if exists catalog_returns;
 
-create table catalog_returns
+create external table catalog_returns
 (
       cr_returned_time_sk bigint
 ,     cr_item_sk bigint
@@ -33,10 +49,13 @@ create table catalog_returns
 ,     cr_net_loss decimal(7,2)
 )
 partitioned by (cr_returned_date_sk bigint)
-stored as ${FILE};
+${STORED_BY}
+stored as ${FILE}
+${TABLE_PROPS};
 
 from ${SOURCE}.catalog_returns cr
-insert overwrite table catalog_returns partition(cr_returned_date_sk) 
+insert overwrite table catalog_returns 
+--partition(cr_returned_date_sk) 
 select
         cr.cr_returned_time_sk,
         cr.cr_item_sk,
@@ -66,7 +85,11 @@ select
         cr.cr_net_loss,
         cr.cr_returned_date_sk
       where cr.cr_returned_date_sk is not null
-insert overwrite table catalog_returns partition (cr_returned_date_sk) 
+;
+      
+from ${SOURCE}.catalog_returns cr
+insert overwrite table catalog_returns 
+--partition (cr_returned_date_sk) 
 select
         cr.cr_returned_time_sk,
         cr.cr_item_sk,

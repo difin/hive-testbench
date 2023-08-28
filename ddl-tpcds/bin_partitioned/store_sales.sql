@@ -1,9 +1,25 @@
+set hive.exec.dynamic.partition.mode=nonstrict;
+set hive.exec.max.dynamic.partitions.pernode=100000;
+set hive.exec.max.dynamic.partitions=100000;
+set hive.exec.max.created.files=1000000;
+set hive.exec.parallel=true;
+set hive.exec.reducers.max=${REDUCERS};
+set hive.stats.autogather=true;
+set hive.optimize.sort.dynamic.partition=true;
+set hive.optimize.sort.dynamic.partition=true;
+set tez.runtime.empty.partitions.info-via-events.enabled=true;
+set tez.runtime.report.partition.stats=true;
+set hive.tez.auto.reducer.parallelism=true;
+set hive.tez.min.partition.factor=0.01; 
+set hive.optimize.sort.dynamic.partition.threshold=0;
+set iceberg.mr.schema.auto.conversion=true;
+
 create database if not exists ${DB};
 use ${DB};
 
 drop table if exists store_sales;
 
-create table store_sales
+create external table store_sales
 (
       ss_sold_time_sk bigint
 ,     ss_item_sk bigint
@@ -29,10 +45,13 @@ create table store_sales
 ,     ss_net_profit decimal(7,2)
 )
 partitioned by (ss_sold_date_sk bigint)
-stored as ${FILE};
+${STORED_BY}
+stored as ${FILE}
+${TABLE_PROPS};
 
 from ${SOURCE}.store_sales ss
-insert overwrite table store_sales partition (ss_sold_date_sk) 
+insert overwrite table store_sales 
+-- partition (ss_sold_date_sk) 
 select
         ss.ss_sold_time_sk,
         ss.ss_item_sk,
@@ -58,7 +77,11 @@ select
         ss.ss_net_profit,
         ss.ss_sold_date_sk
         where ss.ss_sold_date_sk is not null
-insert overwrite table store_sales partition (ss_sold_date_sk) 
+;
+
+from ${SOURCE}.store_sales ss
+insert overwrite table store_sales 
+--partition (ss_sold_date_sk) 
 select
         ss.ss_sold_time_sk,
         ss.ss_item_sk,
